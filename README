@@ -1,0 +1,83 @@
+Duta Viorel-Ionut
+331CB
+Tema 3 APD - Procesare de imagini folosind MPI
+
+Numarul de core-uri disponibile = 2 (Procesor dual-core Intel Core i5 2015)
+
+=================================== Observatii ==================================
+	
+	Cand testez tema pe linux am probleme la randul 83 din tema3.h si la 127 din
+tema3.c (am comentat liniile pentru orice eventualitate).
+	Structura tema:	1) citirea imaginii din fisier de catre procesul MASTER
+					2) partajarea imaginii cu celelalte procese
+					3) aplicarea filtrelor si partajarea marginilor imaginii
+					4) reconstruirea imaginii de catre procesul MASTER
+
+============================= Optimizare multi-core =============================
+
+	Pentru a rezolva problema intr-un mod eficient atunci cand am la dispozitie
+mai multe core-uri am ales sa impart imaginea (fiecare primeste o parte din 
+liniile pozei). Citirea se realizeaza de procesul MASTER care daca numarul de
+task-uri este mai mare decat 1 o sa imparta rezul imaginii (imaginea este trimisa
+catre celelalte procese cu tagul 0).
+	Pentru ca procesul MASTER efectueza mai multe operatii (citirea, partajarea 
+si scrierea imaginii), indiferent de numarul maxim de procese disponibile, exista
+o limita inferioara (fiind limitat la np = 2, nu am putut sa calculez acest 
+timp).
+	Dupa trimitere, respectiv receptia partii din imagine, fiecare proces aplica
+filtrele primite ca parametru pe propria imagine, trimite marginile care procesul
+vecin (doar cea inferioara pentru procesul 0 si cea superioara pentru procesul
+numtasks) si receptioneaza marginile suplimentare modificate (cu tagul 1).
+	Ultimul pas in realizarea temei este reconstruirea imaginii: procele de la 1
+la numtasks trimit partea din imagine cu tagul 2, iar MASTER recostruieste 
+imaginea modificand adresa la care indica image->image[j].
+
+=================================== Statistici ==================================
+	
+	Datele sunt obtinute dupa rularea cu "time mpirun -np x tema3 ... "
+ 
+PNM: baby-yoda.pnm
+		smooth		blur		sharpen		mean		emboss
+NP 1	0m0.557s	0m0.549s	0m0.510s	0m0.582s	0m0.560s	M = 0m0.551s
+NP 2	0m0.434s	0m0.450s	0m0.382s	0m0.383s	0m0.430s	M = 0m0.416s
+
+		
+		2 filtre 	3 filtre 	4 filtre 	5 filtre 	6 filtre 	7 filtre
+NP 1	0m0.829s 	0m1.231s 	0m1.466s 	0m1.755s 	0m2.047s 	0m2.324s
+NP 2 	0m0.542s 	0m0.722s 	0m0.861s 	0m1.029s 	0m1.180s 	0m1.382s
+
+Total PNM:
+NP 1 	12.41s
+NP 2	7.795s
+NP2 = 62.8% NP1
+
+
+PGM: darth-vader.pgm
+		smooth		blur		sharpen		mean		emboss
+NP 1	0m0.336s	0m0.329s	0m0.347s	0m0.292s	0m0.337s	M = 0m0.328s
+NP 2	0m0.308s	0m0.321s	0m0.268s	0m0.310s	0m0.268s	M = 0m0.295s
+
+		2 filtre 	3 filtre 	4 filtre 	5 filtre 	6 filtre 	7 filtre
+NP 1	0m0.374s 	0m0.541s 	0m0.582s 	0m0.694s 	0m0.732s 	0m0.820s
+NP 2	0m0.358s	0m0.439s	0m0.453s 	0m0.521s 	0m0.548s	0m0.597s
+
+Total PGM:
+NP 1 	5.384s
+NP 2	4.391s
+NP2 = 81.55% NP1
+
+=================================== Concluzii ===================================
+
+	Pentru un singur filtru diferenta dintre un core si doua este destul de mica
+pentru imaginea darth-vader.pgm (dimenziuni mici), dar pentru imaginea color, se
+observa diferentele. Atunci cand se aplica mai multe filtre, creste si numarul de
+operatii necesare si prin urmare si diferentele de timp cresc. 
+	Singurele minusuri al cazului multi-core il reprezinta trimiterea si receptia
+marginilor imaginii pentru a putea aplica filtrul corect pe toata imaginea si 
+reconstruirea imaginii finale.
+	Este normal ca in cazul imaginii PNM sa obtin performante mai bune pentru 
+NP >= 2 pentru ca imaginea este mai mare (datorita celor trei matrice: RGB).
+
+=================================================================================
+
+
